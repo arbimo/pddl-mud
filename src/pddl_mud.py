@@ -54,35 +54,37 @@ class Pb:
         return Pb(pb, plan)
 
     @staticmethod
-    def parse(dir: Path) -> Pb:
+    def parse(dir: str | Path) -> Pb:
+        if isinstance(dir, str):
+            dir = Path(dir)
         reader = PDDLReader()
         pb = reader.parse_problem(dir / "domain.pddl", dir / "problem.pddl")
         plan = reader.parse_plan(pb, dir / "plan")
         return Pb(pb, plan)
 
-    def write(self, dir: Path):
+    def write(self, dir: str | Path):
+        if isinstance(dir, str):
+            dir = Path(dir)
+        dir.mkdir(exist_ok=True)
         writer = PDDLWriter(self.pb)
         writer.write_domain(dir / "domain.pddl")
         writer.write_problem(dir / "problem.pddl")
         writer.write_plan(self.plan, dir / "plan")
 
 
-def main(
-    in_dir: Path,
-    out_dir: Path,
+def minimize(
+    init: Pb,
     accepts: Callable[[Pb], bool],
     max_iter=1000,
     max_stall=30,
-):
-    init = Pb.parse(in_dir)
-
+) -> Pb:
     pb = init.pb
     plan = init.plan
 
     print(pb)
     print(plan)
 
-    assert accepts(init)
+    assert accepts(init), "The initial problem does not pass the requirements..."
 
     failures_since_last_success = 0
 
@@ -113,8 +115,7 @@ def main(
     print("\n===== Simplified plan =======\n")
     print(cur.plan)
 
-    print(f"\nWriting results to {out_dir}")
-    cur.write(out_dir)
+    return cur
 
 
 def action_removal(pb: Pb) -> Pb | None:
@@ -225,15 +226,11 @@ SIMPLIFICATIONS: List[Callable[[Pb], Pb|None]] = [
 if __name__ == "__main__":
 
     def accepts(xpb: Pb) -> bool:
-        verbose = False
         pb = xpb.pb
         plan = xpb.plan
 
         with PlanValidator(problem_kind=pb.kind) as validator:
             res = validator.validate(pb, plan)
-            if verbose:
-                print("seq plan validator", res)
-                print(res.log_messages)
             if res.status == ValidationResultStatus.INVALID:
                 return False
 
@@ -243,11 +240,14 @@ if __name__ == "__main__":
         }
         with OneshotPlanner(name="aries", params=params) as planner:
             res = planner.solve(pb)
-            if verbose:
-                print("aries status: ", res.status)
             if res.status != PlanGenerationResultStatus.UNSOLVABLE_INCOMPLETELY:
                 return False
 
         return True
 
-    main(Path("target"), Path("target"), accepts=accepts, max_iter=500, max_stall=100)
+    init = Pb.parse("target/")
+    min = minimize(init, accepts=accepts, max_iter=200, max_stall=100)
+
+    out_dir = Path("target2/")
+    print(f"\nWriting results to {out_dir}")
+    min.write(out_dir)

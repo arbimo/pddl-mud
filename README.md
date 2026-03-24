@@ -24,4 +24,18 @@ For this use case, the accept function should be set so that it returns true iff
  - the plan is a valid solution for this problem
  - the tested planner return `unsatisfiable`
 
- The results will be domain/problem with as little elements as possible so that the problem remains satisfiable (the witness plan is valid) but the planner still incorrectly derive UNSAT
+ The results will be domain/problem/plan with as little elements as possible so that the problem remains satisfiable (the witness plan is valid) but the planner still incorrectly derive UNSAT.
+
+## Example 
+
+The [`example.py`](example/example.py) file contains an example for minimizing the `woodworking` domain that is not supported `aries-val` (due to lack of support for add-after-delete).
+It can be run with:
+
+```sh
+cd example/ && uv run --no-project --script  example.py
+```
+
+## Disclaimer
+
+This is a not a production ready project and has very narrow support in general. It may fail on input more complex than the few that I have actually tested.
+It also relies on undocumented aspects of `unified-planning` and may break with updates.

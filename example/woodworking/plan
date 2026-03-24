@@ -1,0 +1,8 @@
+(do_plane p2 planer0 verysmooth natural varnished)
+(load_highspeed_saw b0 highspeed_saw0)
+(do_grind p0 grinder0 smooth red varnished colourfragments)
+(do_glaze p2 glazer0 red)
+(cut_board_medium b0 p1 highspeed_saw0 pine rough s3 s2 s1)
+(do_glaze p1 glazer0 natural)
+(do_plane p1 planer0 rough natural glazed)
+(do_spray_varnish p1 spray_varnisher0 natural smooth)
