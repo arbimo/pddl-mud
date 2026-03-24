@@ -8,7 +8,8 @@
 from unified_planning.engines.results import ValidationResultStatus
 from unified_planning.shortcuts import PlanValidator
 
-from pddl_mud import minimize, Pb
+from pddl_mud import Pb, minimize
+
 
 def accepts(xpb: Pb) -> bool:
     pb = xpb.pb
@@ -29,6 +30,7 @@ def accepts(xpb: Pb) -> bool:
             return False
 
     return True
+
 
 if __name__ == "__main__":
     # The woodworking problem requires the PDDL add-after-delete semantics which aries-val does not support

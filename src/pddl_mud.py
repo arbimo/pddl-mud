@@ -4,12 +4,10 @@ from pathlib import Path
 from typing import Callable, List, TypeVar
 
 import unified_planning as up
-from unified_planning.engines import PlanGenerationResultStatus, ValidationResultStatus
 from unified_planning.io import PDDLReader, PDDLWriter
-from unified_planning.model import FNode
+from unified_planning.model import Action, FNode
 from unified_planning.model.problem import Problem
-from unified_planning.plans import ActionInstance, Plan, SequentialPlan
-from unified_planning.shortcuts import And, OneshotPlanner, PlanValidator
+from unified_planning.plans import ActionInstance, Plan
 
 T = TypeVar("T")
 
@@ -35,7 +33,7 @@ def remove(lst: List[T]) -> T | None:
         rm = remove(args)
         assert rm is not None
         lst.append(elem.environment.expression_manager.And(*args))
-        return rm
+        return rm  # not the right type but in practice we only check that the element is not None...
     return elem
 
 
@@ -44,7 +42,7 @@ class Pb:
     """Problem to minimize (with a witness plan)"""
 
     pb: Problem
-    plan: Plan
+    plan: Plan  # in practice we actually rely on the fact that it is a SequentialPlan
 
     def clone(self) -> Pb:
         pb = self.pb.clone()
@@ -91,7 +89,7 @@ def minimize(
     cur = init.clone()
     for i in range(max_iter):
         print()
-        simplifier: Callable[[Pb], Pb|None] | None = select(SIMPLIFICATIONS)
+        simplifier: Callable[[Pb], Pb | None] | None = select(SIMPLIFICATIONS)
         assert simplifier is not None, "No simpliciations available"
         candidate = simplifier(cur.clone())
         if candidate is None:
@@ -127,7 +125,7 @@ def action_removal(pb: Pb) -> Pb | None:
 
 
 def precond_removal(pb: Pb) -> Pb | None:
-    act: Action = select(pb.pb.actions)
+    act: Action | None = select(pb.pb.actions)
     if act is None:
         return None
     pre = remove(act.preconditions)
@@ -139,7 +137,7 @@ def precond_removal(pb: Pb) -> Pb | None:
 
 
 def eff_removal(pb: Pb) -> Pb | None:
-    act: Action = select(pb.pb.actions)
+    act: Action | None = select(pb.pb.actions)
     if act is None:
         return None
     eff = remove(act.effects)
@@ -186,7 +184,7 @@ def fluent_removal(pb: Pb) -> Pb | None:
     f = remove(pb.pb.fluents)
     if f is None:
         return None
-    print(f"Removfing fluent {f}")
+    print(f"Removing fluent {f}")
     # in addition, we need to clean its usage in defaults and initial values
     if f in pb.pb.fluents_defaults:
         del pb.pb.fluents_defaults[f]
@@ -209,7 +207,7 @@ def object_removal(pb: Pb) -> Pb | None:
     return pb
 
 
-SIMPLIFICATIONS: List[Callable[[Pb], Pb|None]] = [
+SIMPLIFICATIONS: List[Callable[[Pb], Pb | None]] = [
     action_removal,
     precond_removal,
     eff_removal,
@@ -220,34 +218,3 @@ SIMPLIFICATIONS: List[Callable[[Pb], Pb|None]] = [
     fluent_removal,
     object_removal,
 ]
-
-
-
-if __name__ == "__main__":
-
-    def accepts(xpb: Pb) -> bool:
-        pb = xpb.pb
-        plan = xpb.plan
-
-        with PlanValidator(problem_kind=pb.kind) as validator:
-            res = validator.validate(pb, plan)
-            if res.status == ValidationResultStatus.INVALID:
-                return False
-
-        params = {
-            "min-depth": 2,
-            "max-depth": 2,
-        }
-        with OneshotPlanner(name="aries", params=params) as planner:
-            res = planner.solve(pb)
-            if res.status != PlanGenerationResultStatus.UNSOLVABLE_INCOMPLETELY:
-                return False
-
-        return True
-
-    init = Pb.parse("target/")
-    min = minimize(init, accepts=accepts, max_iter=200, max_stall=100)
-
-    out_dir = Path("target2/")
-    print(f"\nWriting results to {out_dir}")
-    min.write(out_dir)
