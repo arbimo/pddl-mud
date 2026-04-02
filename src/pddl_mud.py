@@ -120,6 +120,8 @@ def action_removal(pb: Pb) -> Pb | None:
     act = remove(pb.pb.actions)
     if act is None:
         return None
+    if act.name in [a.action.name for a in pb.plan.actions]:
+        return None  # cannot remove an action that is in the plan
     print("Removing action:", act.name)
     return pb
 
